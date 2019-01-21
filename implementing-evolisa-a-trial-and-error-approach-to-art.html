@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Roberto Izquierdo</title>
+    <meta name="author" content="Roberto Izquierdo" />
+
+    <!-- syntax highlighting CSS -->
+    <link rel="stylesheet" href="/theme/css/syntax.css" type="text/css" />
+
+    <!-- Homepage CSS -->
+    <link rel="stylesheet" href="/theme/css/main.css" type="text/css" />
+
+</head>
+<body>
+
+    <div class="site">
+        <div class="title">
+            <a href="/">Roberto Izquierdo</a>
+            <a class="extra" href="/">home</a>
+        </div>
+
+<section id="post" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="/implementing-evolisa-a-trial-and-error-approach-to-art.html" rel="bookmark"
+           title="Permalink to Implementing EvoLisa: A trial-and-error approach to art">Implementing EvoLisa: A trial-and-error approach to art</a></h1>
+    </header>
+
+    <div class="entry-content">
+      <p>Computers can be used to produce art, but can they produce art <em>on their own</em>?</p>
+<p>Yes. Yes they can, and they have been doing <a href="https://en.wikipedia.org/wiki/Generative_art">exactly that</a> for quite some time.
+Your smartphone can <a href="https://prisma-ai.com/">use a neural network</a> to imitate <a href="https://arxiv.org/pdf/1508.06576.pdf">the style of long-dead master painters</a> and apply it to pictures of your cats.</p>
+<p>But you don't need to go that far to produce interesting results.</p>
+<p><a href="https://rogerjohansson.blog/2008/12/07/genetic-programming-evolution-of-mona-lisa/">EvoLisa</a> is a comparatively simple example of generative art.
+It uses a bunch of overlapping, semi-transparent polygons to approximate a picture - producing images that are, if not artistic, at least interesting to look at.</p>
+<p><img alt="" src="/images/image01.png"></p>
+<p>But what does the computer know about art? How does it decide which colors are best, which shapes to use? That's easy.
+It has zero knowledge and inifinite patience.</p>
+<p>So it tries.
+And fails.
+So it changes its approach slightly, and tries again.
+And again.
+And <em>again and again and again</em>, slowly iterating its approach.
+Give it enough time, and you start to get recognizable results.</p>
+<h2>Implementing a search algorithm</h2>
+<p>EvoLisa is an example of <a href="https://en.wikipedia.org/wiki/Search_algorithm">search algorithm</a> - an algorithm that looks for optimal results in the space of all possible solutions to a given problem.
+That is, given all possible combinations of polygons, the algorithm searchs for the one that is the most similar to the original image.</p>
+<p>Now there are many ways of making this search.
+In this case we are iterating over incremental random changes to a single solution, so we are talking about a <a href="https://en.wikipedia.org/wiki/Hill_climbing">Stochastic Hill Climbing algorithm</a>.</p>
+<p>A search algorithm has three critical points:
+<em> a data structure that holds the data we are optimizing.
+</em> a means of generating new solutions.
+* a method that gives a score to our solutions.</p>
+<p>We can see how they fit together if we sketch the algorithm in pseudocode:</p>
+<div class="highlight"><pre><span></span>original = get image from file
+polygons = generate a bunch of random polygons
+
+loop:
+    new_polygons = make a small change to polygons
+    if new_polygons is closer to original than polygons:
+        replace polygons with new_polygons
+</pre></div>
+
+
+<p>The algorithm's performance will depend on the design choices and tradeoffs we make regarding these three points.</p>
+<h2>What's an image? A miserable pile of arrays</h2>
+<p>Each one of the polygons that define our image is defined by two things:
+<em> a list of (x, y) points that define the outline.
+</em> a RGBA value for the fill color and transparency.</p>
+<p>We want to have a variable number of points per polygon, but it should be easier (and probably faster) to work with arrays of fixed length.
+We'll add a third value containing the number of points of our polygon - this way we can have outlines of fixed length but only used the points we need.</p>
+<p>In the image we can see three randomly generated shapes and the corresponding arrays for the number of points, coordinates and colors.</p>
+<p><img alt="" src="/images/image02.png"></p>
+<p>All these values will be stored inside numpy arrays because they are pretty standard, reasonably fast, and well suited to our purpouses.
+For example, there are a number of functions for generating random arrays that will be useful when initializing our shapes.</p>
+<h2>Trying something new</h2>
+<p>Our algorithm finds better solutions by making small changes to the current one and seeing if there is any improvement.
+The kind of changes we make will determine what kind of results are possible, so it's important to define them carefully.</p>
+<p>This implementation randomly applies one of the following changes to a random polygon in the set:
+<em> Displace one of the points of the polygon by a random amount in the XY axis.
+</em> Displace the whole polygon by a random amount in the XY axis.
+<em> Change the drawing order of the points - each point is connected to the next one, so by changing the order we change the shape.
+</em> Add or remove a point from the polygon.
+<em> Change the color by a random amount in the RGB axis.
+</em> Change the transparency by a random amount.</p>
+<p>It's important to make sure that the changes don't produce invalid solutions.
+All points must be within the boundaries of the image, all color values must stay within the 0-255 range, and the number of points can't be more or less than a user-defined amount.</p>
+<h2>Does this look like a face to you?</h2>
+<p>The last thing we need is a function that tells us how close we are to the original image. In this case we compare the image resulting from our polygon set with the original, in a pixel-by-pixel basis.
+We can add the absolute values of this difference for each pixel to get a value that represents how different the two images are.
+This value can be normalized over the number of pixels to produce a human-readable value, but it's not relevant to the algorithm because the size of the images remains constant between iterations.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">error_abs</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;i4&#39;</span><span class="p">)))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</pre></div>
+
+
+<p>I stumbled upon a pitfall here.
+Image arrays are composed by unsigned 8-bit numbers because they only contain positive values between 0 and 255.
+If we try to substract then normally, we get an array of the same type - with the negative values overflowing to positive again.
+This can lead to unexpected results - in my case, I found out when the algorithm started generating deep blue cats.</p>
+<h2>Smaller is faster</h2>
+<p>With all this three pieces, the algorithm is ready to run.
+But the goal wasn't getting it to run, it was getting it to run <em>fast</em>.</p>
+<p>So let's take our algorithm to a stroll with <a href="https://github.com/rkern/line_profiler">Line Profiler</a> to see where it's wasting it's time.</p>
+<div class="highlight"><pre><span></span>    Time  % Time    Line Contents
+===============================================================================
+                    def iterate(shapes, points, colors, score):
+   170.0     0.2        n_shapes, n_points, n_colors = changes(
+                            shapes, points, colors)
+ 41315.0    46.4        n_image = np.array(draw_image(
+                            width, height, n_shapes, n_points, n_colors))
+ 47594.0    53.4        new_score = error_abs(internal, new_image)
+
+     4.0     0.0        if new_score &lt; score:
+                            return n_shapes, n_points, n_colors, n_score
+     1.0     0.0        return shapes, points, colors, score
+</pre></div>
+
+
+<p>We can see that two lines take up 99.8% of processing time:
+<em> The generation of a new image from the set of shapes takes up 46.4% of the time.
+</em> Calculating the difference between images takes up 53.4% of the time.</p>
+<p>Both lines heavily depend on the input image size. That is, if the image is bigger the algorithm will take longer.
+What can we do about it?</p>
+<p>We can make a tradeoff - speed por precission.
+That is, we can take the original image, scale it down to a more manageable size, and work with that.</p>
+<p>If we scale down the image by a factor of eight:</p>
+<div class="highlight"><pre><span></span>    Time  % Time    Line Contents
+===============================================================================
+                    def iterate(shapes, points, colors, score):
+  1293.0    18.2        n_shapes, n_points, n_colors = changes(
+                            shapes, points, colors)
+  3444.0    48.5        n_image = np.array(draw_image(
+                            width, height, n_shapes, n_points, n_colors))
+  2319.0    32.6        new_score = error_abs(internal, new_image)
+
+    47.0     0.7        if new_score &lt; score:
+                            return n_shapes, n_points, n_colors, n_score
+     2.0     0.0        return shapes, points, colors, score
+</pre></div>
+
+
+<p>We can see that the times are an order of magnitude lower or better than before.
+Of course the images we get won't be as good as before, but we'll get them in a manageable amount of time.</p>
+<p>The scaling factor is also configurable, so the tradeoff can be configured depending on the desired results.
+It'd be possible to improve both precission and speed by modifying the scaling factor on the fly - improving precision as the algorithm converges.</p>
+<h2>Enough numbers, let's see some results</h2>
+<p><img alt="" src="/images/image03.png"></p>
+<p><img alt="" src="/images/image04.png"></p>
+<p><img alt="" src="/images/image05.png"></p>
+<p><img alt="" src="/images/image06.png"></p>
+<h2>Try this at home kids!</h2>
+<p>The source code for this project is available <a href="https://github.com/RobertoIA/EvoLisa">in github</a>.</p>
+    </div>
+  </article>
+</section>
+
+        <div class="footer">
+          <div class="contact">
+            <p>
+              Roberto Izquierdo
+              <br />
+              Data Scientist at
+                <a href="http://www.tid.es/es">Telefonica I+D PHB team</a>
+            </p>
+          </div>
+          <div class="social">
+            <p>
+              <a href="http://http://github.com/robertoia">http://github.com/robertoia</a><br />
+              <a href="http://http://linkedin.com/in/robertoia">http://linkedin.com/in/robertoia</a><br />
+            </p>
+          </div>
+        </div>
+    </div>
+</body>
+</html>

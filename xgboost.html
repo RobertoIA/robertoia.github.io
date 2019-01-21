@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Roberto Izquierdo</title>
+    <meta name="author" content="Roberto Izquierdo" />
+
+    <!-- syntax highlighting CSS -->
+    <link rel="stylesheet" href="/theme/css/syntax.css" type="text/css" />
+
+    <!-- Homepage CSS -->
+    <link rel="stylesheet" href="/theme/css/main.css" type="text/css" />
+
+</head>
+<body>
+
+    <div class="site">
+        <div class="title">
+            <a href="/">Roberto Izquierdo</a>
+            <a class="extra" href="/">home</a>
+        </div>
+
+<section id="post" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="/xgboost.html" rel="bookmark"
+           title="Permalink to XGBoost">XGBoost</a></h1>
+      <h1><a href="http://www.synergicpartners.com/en/xgboost/">View original at Synergic Partners</a></h1>
+    </header>
+
+    <div class="entry-content">
+      <p>In <strong>Kaggle machine learning competitions</strong>, two techniques tend to be dominant: the use of groupings of decision trees for structured data and neural networks when the data includes images or sound. Traditionally, Random Forest dominated competitions in structured data, but another algorithm has recently surpassed it in these competitions: <a href="http://learningsys.org/papers/LearningSys_2015_paper_32.pdf">Gradient Boosted Trees</a>.</p>
+<p>Like RF, GBT classifies examples through the use of a grouping of decision trees. In the case of the latter, the trees are constructed sequentially, adding at each iteration the tree that best compensates for the errors in the other trees. This method is called gradient because the model evolves tree by tree towards a minimum of error.</p>
+<p><strong>The tool used in these cases is called <a href="https://github.com/dmlc/xgboost">XGBoost</a></strong>, an implementation of GBT that is compatible with Python and R. Its success in competitions is due not only to its precision but also to the speed of iteration that it provides. While still functioning as a single core, it works twice as fast as the <em>gbm</em> library of R and four times as fast as the <em>scikit-learn</em> implementation in Python. This is achieved through a series of optimizations in the implementation that can accelerate to even greater speeds thanks to its compatibility with distributed systems like MPI or Yam.</p>
+<p><img alt="" src="/images/image08.png"></p>
+    </div>
+  </article>
+</section>
+
+        <div class="footer">
+          <div class="contact">
+            <p>
+              Roberto Izquierdo
+              <br />
+              Data Scientist at
+                <a href="http://www.tid.es/es">Telefonica I+D PHB team</a>
+            </p>
+          </div>
+          <div class="social">
+            <p>
+              <a href="http://http://github.com/robertoia">http://github.com/robertoia</a><br />
+              <a href="http://http://linkedin.com/in/robertoia">http://linkedin.com/in/robertoia</a><br />
+            </p>
+          </div>
+        </div>
+    </div>
+</body>
+</html>

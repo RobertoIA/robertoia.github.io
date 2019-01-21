@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Roberto Izquierdo - misc</title><link href="/" rel="alternate"></link><link href="/feeds/misc.atom.xml" rel="self"></link><id>/</id><updated>2018-06-05T00:00:00+02:00</updated><entry><title>Implementing EvoLisa: A trial-and-error approach to art</title><link href="/implementing-evolisa-a-trial-and-error-approach-to-art.html" rel="alternate"></link><published>2018-06-05T00:00:00+02:00</published><updated>2018-06-05T00:00:00+02:00</updated><author><name>Roberto Izquierdo</name></author><id>tag:None,2018-06-05:/implementing-evolisa-a-trial-and-error-approach-to-art.html</id><summary type="html">&lt;p&gt;Computers can be used to produce art, but can they produce art &lt;em&gt;on their own&lt;/em&gt;?&lt;/p&gt;
+&lt;p&gt;Yes. Yes they can, and they have been doing &lt;a href="https://en.wikipedia.org/wiki/Generative_art"&gt;exactly that&lt;/a&gt; for quite some time.
+Your smartphone can &lt;a href="https://prisma-ai.com/"&gt;use a neural network&lt;/a&gt; to imitate &lt;a href="https://arxiv.org/pdf/1508.06576.pdf"&gt;the style of long-dead master painters&lt;/a&gt; and apply it to pictures …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Computers can be used to produce art, but can they produce art &lt;em&gt;on their own&lt;/em&gt;?&lt;/p&gt;
+&lt;p&gt;Yes. Yes they can, and they have been doing &lt;a href="https://en.wikipedia.org/wiki/Generative_art"&gt;exactly that&lt;/a&gt; for quite some time.
+Your smartphone can &lt;a href="https://prisma-ai.com/"&gt;use a neural network&lt;/a&gt; to imitate &lt;a href="https://arxiv.org/pdf/1508.06576.pdf"&gt;the style of long-dead master painters&lt;/a&gt; and apply it to pictures of your cats.&lt;/p&gt;
+&lt;p&gt;But you don't need to go that far to produce interesting results.&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://rogerjohansson.blog/2008/12/07/genetic-programming-evolution-of-mona-lisa/"&gt;EvoLisa&lt;/a&gt; is a comparatively simple example of generative art.
+It uses a bunch of overlapping, semi-transparent polygons to approximate a picture - producing images that are, if not artistic, at least interesting to look at.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image01.png"&gt;&lt;/p&gt;
+&lt;p&gt;But what does the computer know about art? How does it decide which colors are best, which shapes to use? That's easy.
+It has zero knowledge and inifinite patience.&lt;/p&gt;
+&lt;p&gt;So it tries.
+And fails.
+So it changes its approach slightly, and tries again.
+And again.
+And &lt;em&gt;again and again and again&lt;/em&gt;, slowly iterating its approach.
+Give it enough time, and you start to get recognizable results.&lt;/p&gt;
+&lt;h2&gt;Implementing a search algorithm&lt;/h2&gt;
+&lt;p&gt;EvoLisa is an example of &lt;a href="https://en.wikipedia.org/wiki/Search_algorithm"&gt;search algorithm&lt;/a&gt; - an algorithm that looks for optimal results in the space of all possible solutions to a given problem.
+That is, given all possible combinations of polygons, the algorithm searchs for the one that is the most similar to the original image.&lt;/p&gt;
+&lt;p&gt;Now there are many ways of making this search.
+In this case we are iterating over incremental random changes to a single solution, so we are talking about a &lt;a href="https://en.wikipedia.org/wiki/Hill_climbing"&gt;Stochastic Hill Climbing algorithm&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;A search algorithm has three critical points:
+&lt;em&gt; a data structure that holds the data we are optimizing.
+&lt;/em&gt; a means of generating new solutions.
+* a method that gives a score to our solutions.&lt;/p&gt;
+&lt;p&gt;We can see how they fit together if we sketch the algorithm in pseudocode:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;original = get image from file
+polygons = generate a bunch of random polygons
+
+loop:
+    new_polygons = make a small change to polygons
+    if new_polygons is closer to original than polygons:
+        replace polygons with new_polygons
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The algorithm's performance will depend on the design choices and tradeoffs we make regarding these three points.&lt;/p&gt;
+&lt;h2&gt;What's an image? A miserable pile of arrays&lt;/h2&gt;
+&lt;p&gt;Each one of the polygons that define our image is defined by two things:
+&lt;em&gt; a list of (x, y) points that define the outline.
+&lt;/em&gt; a RGBA value for the fill color and transparency.&lt;/p&gt;
+&lt;p&gt;We want to have a variable number of points per polygon, but it should be easier (and probably faster) to work with arrays of fixed length.
+We'll add a third value containing the number of points of our polygon - this way we can have outlines of fixed length but only used the points we need.&lt;/p&gt;
+&lt;p&gt;In the image we can see three randomly generated shapes and the corresponding arrays for the number of points, coordinates and colors.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image02.png"&gt;&lt;/p&gt;
+&lt;p&gt;All these values will be stored inside numpy arrays because they are pretty standard, reasonably fast, and well suited to our purpouses.
+For example, there are a number of functions for generating random arrays that will be useful when initializing our shapes.&lt;/p&gt;
+&lt;h2&gt;Trying something new&lt;/h2&gt;
+&lt;p&gt;Our algorithm finds better solutions by making small changes to the current one and seeing if there is any improvement.
+The kind of changes we make will determine what kind of results are possible, so it's important to define them carefully.&lt;/p&gt;
+&lt;p&gt;This implementation randomly applies one of the following changes to a random polygon in the set:
+&lt;em&gt; Displace one of the points of the polygon by a random amount in the XY axis.
+&lt;/em&gt; Displace the whole polygon by a random amount in the XY axis.
+&lt;em&gt; Change the drawing order of the points - each point is connected to the next one, so by changing the order we change the shape.
+&lt;/em&gt; Add or remove a point from the polygon.
+&lt;em&gt; Change the color by a random amount in the RGB axis.
+&lt;/em&gt; Change the transparency by a random amount.&lt;/p&gt;
+&lt;p&gt;It's important to make sure that the changes don't produce invalid solutions.
+All points must be within the boundaries of the image, all color values must stay within the 0-255 range, and the number of points can't be more or less than a user-defined amount.&lt;/p&gt;
+&lt;h2&gt;Does this look like a face to you?&lt;/h2&gt;
+&lt;p&gt;The last thing we need is a function that tells us how close we are to the original image. In this case we compare the image resulting from our polygon set with the original, in a pixel-by-pixel basis.
+We can add the absolute values of this difference for each pixel to get a value that represents how different the two images are.
+This value can be normalized over the number of pixels to produce a human-readable value, but it's not relevant to the algorithm because the size of the images remains constant between iterations.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;error_abs&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;abs&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;subtract&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dtype&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;dtype&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;i4&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)))&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;I stumbled upon a pitfall here.
+Image arrays are composed by unsigned 8-bit numbers because they only contain positive values between 0 and 255.
+If we try to substract then normally, we get an array of the same type - with the negative values overflowing to positive again.
+This can lead to unexpected results - in my case, I found out when the algorithm started generating deep blue cats.&lt;/p&gt;
+&lt;h2&gt;Smaller is faster&lt;/h2&gt;
+&lt;p&gt;With all this three pieces, the algorithm is ready to run.
+But the goal wasn't getting it to run, it was getting it to run &lt;em&gt;fast&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;So let's take our algorithm to a stroll with &lt;a href="https://github.com/rkern/line_profiler"&gt;Line Profiler&lt;/a&gt; to see where it's wasting it's time.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;    Time  % Time    Line Contents
+===============================================================================
+                    def iterate(shapes, points, colors, score):
+   170.0     0.2        n_shapes, n_points, n_colors = changes(
+                            shapes, points, colors)
+ 41315.0    46.4        n_image = np.array(draw_image(
+                            width, height, n_shapes, n_points, n_colors))
+ 47594.0    53.4        new_score = error_abs(internal, new_image)
+
+     4.0     0.0        if new_score &amp;lt; score:
+                            return n_shapes, n_points, n_colors, n_score
+     1.0     0.0        return shapes, points, colors, score
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We can see that two lines take up 99.8% of processing time:
+&lt;em&gt; The generation of a new image from the set of shapes takes up 46.4% of the time.
+&lt;/em&gt; Calculating the difference between images takes up 53.4% of the time.&lt;/p&gt;
+&lt;p&gt;Both lines heavily depend on the input image size. That is, if the image is bigger the algorithm will take longer.
+What can we do about it?&lt;/p&gt;
+&lt;p&gt;We can make a tradeoff - speed por precission.
+That is, we can take the original image, scale it down to a more manageable size, and work with that.&lt;/p&gt;
+&lt;p&gt;If we scale down the image by a factor of eight:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;    Time  % Time    Line Contents
+===============================================================================
+                    def iterate(shapes, points, colors, score):
+  1293.0    18.2        n_shapes, n_points, n_colors = changes(
+                            shapes, points, colors)
+  3444.0    48.5        n_image = np.array(draw_image(
+                            width, height, n_shapes, n_points, n_colors))
+  2319.0    32.6        new_score = error_abs(internal, new_image)
+
+    47.0     0.7        if new_score &amp;lt; score:
+                            return n_shapes, n_points, n_colors, n_score
+     2.0     0.0        return shapes, points, colors, score
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;We can see that the times are an order of magnitude lower or better than before.
+Of course the images we get won't be as good as before, but we'll get them in a manageable amount of time.&lt;/p&gt;
+&lt;p&gt;The scaling factor is also configurable, so the tradeoff can be configured depending on the desired results.
+It'd be possible to improve both precission and speed by modifying the scaling factor on the fly - improving precision as the algorithm converges.&lt;/p&gt;
+&lt;h2&gt;Enough numbers, let's see some results&lt;/h2&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image03.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image04.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image05.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image06.png"&gt;&lt;/p&gt;
+&lt;h2&gt;Try this at home kids!&lt;/h2&gt;
+&lt;p&gt;The source code for this project is available &lt;a href="https://github.com/RobertoIA/EvoLisa"&gt;in github&lt;/a&gt;.&lt;/p&gt;</content></entry><entry><title>XGBoost</title><link href="/xgboost.html" rel="alternate"></link><published>2016-01-28T00:00:00+01:00</published><updated>2016-01-28T00:00:00+01:00</updated><author><name>Roberto Izquierdo</name></author><id>tag:None,2016-01-28:/xgboost.html</id><summary type="html">&lt;p&gt;In &lt;strong&gt;Kaggle machine learning competitions&lt;/strong&gt;, two techniques tend to be dominant: the use of groupings of decision trees for structured data and neural networks when the data includes images or sound. Traditionally, Random Forest dominated competitions in structured data, but another algorithm has recently surpassed it in these competitions: &lt;a href="http://learningsys.org/papers/LearningSys_2015_paper_32.pdf"&gt;Gradient …&lt;/a&gt;&lt;/p&gt;</summary><content type="html">&lt;p&gt;In &lt;strong&gt;Kaggle machine learning competitions&lt;/strong&gt;, two techniques tend to be dominant: the use of groupings of decision trees for structured data and neural networks when the data includes images or sound. Traditionally, Random Forest dominated competitions in structured data, but another algorithm has recently surpassed it in these competitions: &lt;a href="http://learningsys.org/papers/LearningSys_2015_paper_32.pdf"&gt;Gradient Boosted Trees&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Like RF, GBT classifies examples through the use of a grouping of decision trees. In the case of the latter, the trees are constructed sequentially, adding at each iteration the tree that best compensates for the errors in the other trees. This method is called gradient because the model evolves tree by tree towards a minimum of error.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;The tool used in these cases is called &lt;a href="https://github.com/dmlc/xgboost"&gt;XGBoost&lt;/a&gt;&lt;/strong&gt;, an implementation of GBT that is compatible with Python and R. Its success in competitions is due not only to its precision but also to the speed of iteration that it provides. While still functioning as a single core, it works twice as fast as the &lt;em&gt;gbm&lt;/em&gt; library of R and four times as fast as the &lt;em&gt;scikit-learn&lt;/em&gt; implementation in Python. This is achieved through a series of optimizations in the implementation that can accelerate to even greater speeds thanks to its compatibility with distributed systems like MPI or Yam.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image08.png"&gt;&lt;/p&gt;</content></entry><entry><title>Neural Style</title><link href="/neural-style.html" rel="alternate"></link><published>2016-01-26T00:00:00+01:00</published><updated>2016-01-26T00:00:00+01:00</updated><author><name>Roberto Izquierdo</name></author><id>tag:None,2016-01-26:/neural-style.html</id><summary type="html">&lt;p&gt;En los últimos años las &lt;strong&gt;redes neuronales&lt;/strong&gt; han sido utilizadas en una variedad de campos a través de las técnicas de Deep Learning, con especial éxito en el reconocimiento y clasificación de imágenes. Algunos ejemplos de estas aplicaciones son el etiquetado automático de vídeos en función a los objetos grabados …&lt;/p&gt;</summary><content type="html">&lt;p&gt;En los últimos años las &lt;strong&gt;redes neuronales&lt;/strong&gt; han sido utilizadas en una variedad de campos a través de las técnicas de Deep Learning, con especial éxito en el reconocimiento y clasificación de imágenes. Algunos ejemplos de estas aplicaciones son el etiquetado automático de vídeos en función a los objetos grabados, el reconocimiento facial o el procesado de texto a partir de imágenes.&lt;/p&gt;
+&lt;p&gt;Las &lt;strong&gt;Convolutional Neural Networks&lt;/strong&gt; son un tipo de redes neuronales especialmente adaptadas al reconocimiento de imágenes, y consisten de una serie de nodos que filtran y almacenan información sobre la imagen de manera jerárquica, de mayor a menor nivel de detalle. La información almacenada en estos nodos puede utilizarse no solo para reconocer imágenes similares, sino que también permite reconstruir aproximaciones a la imagen original, o aplicar fragmentos de la misma a otras imágenes.&lt;/p&gt;
+&lt;p&gt;Un ejemplo de esta aplicación se encuentra en el paper &lt;a href="http://arxiv.org/abs/1508.06576"&gt;&lt;strong&gt;“A Neural Algorithm for Artistic Style”&lt;/strong&gt;&lt;/a&gt;, en el cual se detalla una red que es capaz de separar la información sobre el estilo y la textura de un cuadro del contenido concreto que se retrata. Esta información puede aplicarse a una imagen existente mediante una función que minimiza las diferencias entre una foto cualquiera y lo que la red ha aprendido de la obra de arte.&lt;/p&gt;
+&lt;p&gt;Como resultado se obtiene un proceso automático que es capaz de producir nuevas obras de arte en el estilo de cualquier artista conocido. Como ejemplo podemos ver el resultado de aplicar el estilo de Picasso a una foto de Synergic.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="/images/image07.png"&gt;&lt;/p&gt;</content></entry><entry><title>Constrained Level Generation Through Grammar-Based Evolutionary Algorithms</title><link href="/constrained-level-generation-through-grammar-based-evolutionary-algorithms.html" rel="alternate"></link><published>2016-01-21T00:00:00+01:00</published><updated>2016-01-21T00:00:00+01:00</updated><author><name>Roberto Izquierdo</name></author><id>tag:None,2016-01-21:/constrained-level-generation-through-grammar-based-evolutionary-algorithms.html</id><summary type="html">&lt;p&gt;Some text&lt;/p&gt;</summary><content type="html">&lt;p&gt;Some text&lt;/p&gt;</content></entry></feed>
