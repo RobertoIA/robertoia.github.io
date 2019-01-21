@@ -6,4 +6,4 @@ pdf: pdfs/Constrained_Level_Generation_Through_Grammar-Based_Evolutionary_Algori
 date: 2016
 ---
 
-Some text
+Research related to my Masters' Thesis in AI. Presented in [Evostar 2016](http://www.evostar.org/2016/).
