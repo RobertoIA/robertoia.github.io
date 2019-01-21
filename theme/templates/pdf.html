@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section id="post" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark"
+           title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a></h1>
+    </header>
+
+    <div class="entry-content">
+      {{ article.content }}
+    </div>
+
+    <iframe src="{{ article.pdf }}" width="100%" height="860em"></iframe>
+  </article>
+</section>
+{% endblock content %}

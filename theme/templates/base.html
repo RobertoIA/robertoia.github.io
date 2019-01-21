@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>{{ SITENAME }}</title>
+    <meta name="author" content="{{ AUTHOR }}" />
+
+    <!-- syntax highlighting CSS -->
+    <link rel="stylesheet" href="{{ SITEURL }}/theme/css/syntax.css" type="text/css" />
+
+    <!-- Homepage CSS -->
+    <link rel="stylesheet" href="{{ SITEURL }}/theme/css/main.css" type="text/css" />
+
+</head>
+<body>
+
+    <div class="site">
+        <div class="title">
+            <a href="/">{{ SITENAME }}</a>
+            <a class="extra" href="/">home</a>
+        </div>
+
+        {% block content %}
+        {% endblock %}
+
+        <div class="footer">
+          <div class="contact">
+            <p>
+              {{ AUTHOR }}
+              <br />
+              {{ CONTACT.job.position }} at
+                <a href="{{ CONTACT.job.url }}">{{ CONTACT.job.company }}</a>
+            </p>
+          </div>
+          <div class="social">
+            <p>
+              <a href="http://{{ CONTACT.social.github }}">{{ CONTACT.social.github }}</a><br />
+              <a href="http://{{ CONTACT.social.linkedin }}">{{ CONTACT.social.linkedin }}</a><br />
+            </p>
+          </div>
+        </div>
+    </div>
+</body>
+</html>
